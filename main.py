@@ -263,7 +263,13 @@ def gradio_workflow(audio_file: Optional[str], model_name: str, use_gpu: bool, p
 with gr.Blocks(title="Separador de faixas - DEVSOUNDS -") as demo:
     # Header com logo (lido de /static/logo.png)
 
-
+    gr.HTML(
+        """
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5326521012969106"
+                crossorigin="anonymous"></script>
+        """,
+        elem_id="adsense-head"
+    )
 
     gr.HTML(
         """
@@ -287,6 +293,22 @@ with gr.Blocks(title="Separador de faixas - DEVSOUNDS -") as demo:
         use_gpu = gr.Checkbox(value=False, label="Usar GPU (CUDA)", info="Marque se tiver NVIDIA + CUDA configurado")
 
     run_btn = gr.Button("Separar")
+
+    gr.HTML(
+        """
+        <div style="margin: 20px 0; text-align:center;">
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-5326521012969106"
+            data-ad-slot="1234567890"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+        </div>
+        """
+    )
 
     gr.Markdown("### 🎧 Stems")
     with gr.Row():
