@@ -199,7 +199,7 @@ def api_models():
 # Gradio (UI) montado no FastAPI
 # ============================
 
-# Tema enxuto: apenas chaves suportadas amplamente na API da sua versão.
+# Tema compatível com versões antigas do Gradio
 THEME = gr.themes.Soft(
     primary_hue="violet",
     neutral_hue="slate",
@@ -215,58 +215,32 @@ THEME = gr.themes.Soft(
     button_primary_background_fill_hover="#8A6BFF",
 )
 
-# Raios de borda, espaçamentos e demais tokens ficam 100% no CSS,
-# evitando incompatibilidades entre versões do Gradio.
+# Demais tokens via CSS (compatível em qualquer Gradio)
 CUSTOM_CSS = """
 :root{
   --ds-bg:#0B1020; --ds-surface:#121931; --ds-surface-2:#172141;
   --ds-text:#EAF0FF; --ds-text-2:#A5B0D0;
   --ds-primary:#7C5CFF; --ds-accent:#11D8C3;
-
-  --ds-radius: 16px;
-  --ds-radius-sm: 12px;
-  --ds-gap: 16px;
-  --ds-gap-lg: 24px;
+  --ds-radius: 16px; --ds-radius-sm: 12px; --ds-gap: 16px; --ds-gap-lg: 24px;
 }
-
 .gradio-container{ max-width:1080px; margin:auto; padding:16px; }
 .topbar{ display:flex; gap:12px; align-items:center; padding:12px 0; }
 .topbar h1{ font-size: clamp(20px, 2.5vw, 28px); margin:0; color:var(--ds-text);}
-
 .card{
   background: linear-gradient(180deg, var(--ds-surface), var(--ds-surface-2));
   border:1px solid rgba(255,255,255,.06);
   border-radius: var(--ds-radius);
   padding:20px;
 }
-
-.upload-box{
-  border:1.5px dashed rgba(255,255,255,.18);
-  padding:24px;
-  border-radius: var(--ds-radius);
-}
-
+.upload-box{ border:1.5px dashed rgba(255,255,255,.18); padding:24px; border-radius: var(--ds-radius); }
 .cta{ display:flex; flex-wrap:wrap; gap: var(--ds-gap); align-items:flex-start; }
-
-button.primary{
-  background:var(--ds-primary) !important;
-  color:#0B1020 !important;
-  border-radius: var(--ds-radius-sm) !important;
-}
-
+button.primary{ background:var(--ds-primary) !important; color:#0B1020 !important; border-radius: var(--ds-radius-sm) !important; }
 small.helper{ color:var(--ds-text-2); display:block; margin-top:8px; }
 .tab-help{ color:var(--ds-text-2); margin-top:6px;}
 .progress-aria{ position:absolute; left:-9999px; top:auto; width:1px; height:1px; overflow:hidden; }
-
-.audio-container, .tabs, .tabitem, .block, .form, .group{
-  border-radius: var(--ds-radius-sm);
-}
-
-@media (max-width: 720px){
-  .cta{ flex-direction:column; }
-}
+.audio-container, .tabs, .tabitem, .block, .form, .group{ border-radius: var(--ds-radius-sm); }
+@media (max-width: 720px){ .cta{ flex-direction:column; } }
 """
-
 
 def gradio_workflow(audio_file: Optional[str], model_name: str, use_gpu: bool, progress=gr.Progress(track_tqdm=True)):
     if not audio_file:
@@ -283,7 +257,6 @@ def gradio_workflow(audio_file: Optional[str], model_name: str, use_gpu: bool, p
         safe_rmtree(workdir)
     threading.Timer(120.0, _cleanup_later).start()
 
-    # ordem fixa para tabs
     return stems["vocals"], stems["drums"], stems["bass"], stems["other"], str(zip_path)
 
 with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="Separar voz e instrumentos (stems) – DevSounds") as demo:
@@ -324,7 +297,7 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="Separar voz e instrumentos (s
         with gr.Tab("ZIP"):
             zip_output = gr.File(label="Baixar ZIP com todos os stems")
 
-    # Adsense (abaixo da dobra para melhor UX/SEO)
+    # Adsense (abaixo da dobra)
     gr.HTML(
         """
         <div style="margin: 24px 0; text-align:center;">
@@ -355,7 +328,7 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="Separar voz e instrumentos (s
             "- Em caso de erro, verifique a mensagem e as dicas exibidas."
         )
 
-    # Região de progresso com aria-live para a11y (screen readers)
+    # Região de progresso com aria-live (a11y)
     gr.HTML('<div class="progress-aria" aria-live="polite" id="live-status">Processo iniciado</div>')
 
     # Ação
@@ -365,15 +338,68 @@ with gr.Blocks(theme=THEME, css=CUSTOM_CSS, title="Separar voz e instrumentos (s
         outputs=[out_vocals, out_drums, out_bass, out_other, zip_output]
     )
 
-# Monta o Gradio dentro do FastAPI na RAIZ
-gr.mount_gradio_app(app, demo, path="/")
+# >>> Monte o Gradio em /app (não na raiz)
+gr.mount_gradio_app(app, demo, path="/app")
 
-# Rota simples para teste de saúde/SEO (pode expandir OG/JSON-LD se quiser)
+# >>> Página estática em / com OG/Twitter (scrapers não rodam JS)
 @app.get("/", response_class=HTMLResponse)
-def root():
-    # Gradio monta na raiz acima, mas manter esta rota ajuda em setups específicos
-    # e dá um fallback SEO minimalista (caso queira customizar o head em reverse proxy).
-    return HTMLResponse("<!doctype html><html><head><link rel='icon' href='/static/favicon.ico' type='image/x-icon'><meta charset='utf-8'><title>DevSounds Stems</title></head><body>App carregando…</body></html>")
+def landing():
+    return HTMLResponse("""
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Separar voz e instrumentos (stems) – DevSounds</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Separe voz, bateria, baixo e outros instrumentos do seu áudio em poucos cliques. IA (Demucs). Baixe as faixas isoladas em ZIP.">
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="Separador de faixas – DevSounds">
+  <meta property="og:description" content="Extraia vozes e instrumentos. Envie seu áudio, separe os stems e baixe o ZIP.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://stems.devsounds.com.br/">
+  <meta property="og:image" content="https://stems.devsounds.com.br/static/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:site_name" content="DevSounds">
+                        
+  <link rel="apple-touch-icon" sizes="180x180" href="static/apple-touch-icon.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="static/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="static/favicon-16x16.png">
+  <link rel="manifest" href="static/site.webmanifest">
+
+  <!-- Twitter Card -->
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Separador de faixas – DevSounds">
+  <meta name="twitter:description" content="Extraia vozes e instrumentos com IA. Baixe as faixas isoladas (stems).">
+  <meta name="twitter:image" content="https://stems.devsounds.com.br/static/og-image.png">
+
+  <!-- Favicon / PWA (opcional) -->
+  <link rel="icon" href="/static/favicon.ico" type="image/x-icon">
+  <link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/site.webmanifest">
+  <meta name="theme-color" content="#0B1020">
+
+  <!-- Canonical -->
+  <link rel="canonical" href="https://stems.devsounds.com.br/">
+
+  <!-- Redireciona usuários para o app; bots já leram as metas -->
+  <meta http-equiv="refresh" content="0; url=/app">
+  <style>
+    body{background:#0B1020;color:#EAF0FF;font-family:system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0}
+    .box{max-width:640px;padding:24px;text-align:center}
+    a{color:#7C5CFF}
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Carregando o app…</h1>
+    <p>Se não redirecionar automaticamente, <a href="/app">clique aqui</a>.</p>
+  </div>
+  <noscript><meta http-equiv="refresh" content="0; url=/app"></noscript>
+</body>
+</html>
+    """)
 
 # Execução:
 # uvicorn main:app --reload
