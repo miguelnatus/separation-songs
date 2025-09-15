@@ -1,9 +1,10 @@
 # main.py
-import os
+from __future__ import annotations
+
 import re
 import shutil
-import tempfile
 import subprocess
+import tempfile
 import threading
 from pathlib import Path
 from typing import Optional, Tuple, Dict
@@ -11,13 +12,34 @@ from typing import Optional, Tuple, Dict
 import gradio as gr
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from starlette.middleware.cors import CORSMiddleware
 
-# ----------------------------
-# Configurações / Utilidades
-# ----------------------------
+# ============================
+# Static & App bootstrap
+# ============================
 
-# Modelos suportados pela sua versão do Demucs (use demucs -h para conferir)
+BASE_DIR = Path(__file__).parent.resolve()
+STATIC_DIR = BASE_DIR / "static"
+STATIC_DIR.mkdir(exist_ok=True)  # garante a pasta
+# CUSTOM_CSS = """
+#     gradio-app {
+#        background: #0a0a0a !important;
+#     }
+#     .audio-container.svelte-1ud6e7m {
+#        border: 1px solid rgba(255, 255, 255, 0.1); 
+#        background: #1a1a1a;
+#     }
+# """
+
+app = FastAPI(title="Separador de faixas - DEVSOUNDS -")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+# ============================
+# Configurações / Utilidades
+# ============================
+
+# Modelos suportados pela sua versão do Demucs (confira com: demucs -h)
 DEMUCS_MODELS = [
     "htdemucs",
     "htdemucs_ft",
@@ -152,11 +174,9 @@ def safe_rmtree(path: Path):
     except Exception:
         pass
 
-# ----------------------------
+# ============================
 # FastAPI (API)
-# ----------------------------
-
-app = FastAPI(title="Separador de Stems (Demucs) - API + Gradio")
+# ============================
 
 # CORS básico – útil se quiser chamar de outro front
 app.add_middleware(
@@ -215,9 +235,9 @@ async def api_separate(
 def api_models():
     return {"models": DEMUCS_MODELS}
 
-# ----------------------------
+# ============================
 # Gradio (UI) montado no FastAPI
-# ----------------------------
+# ============================
 
 def gradio_workflow(audio_file: Optional[str], model_name: str, use_gpu: bool, progress=gr.Progress(track_tqdm=True)):
     if not audio_file:
@@ -239,12 +259,31 @@ def gradio_workflow(audio_file: Optional[str], model_name: str, use_gpu: bool, p
     # Retorna na ordem fixa: vocals, drums, bass, other, zip
     return stems["vocals"], stems["drums"], stems["bass"], stems["other"], str(zip_path)
 
-with gr.Blocks(title="Separador de Stems (Demucs)") as demo:
-    gr.Markdown("# 🎛️ Separação de Stems com Demucs (PyTorch) — MVP FastAPI + Gradio")
+# with gr.Blocks(title="Separador de faixas - DEVSOUNDS -", css=CUSTOM_CSS) as demo:
+with gr.Blocks(title="Separador de faixas - DEVSOUNDS -") as demo:
+    # Header com logo (lido de /static/logo.png)
+
+    gr.HTML(
+        """
+        <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5326521012969106"
+                crossorigin="anonymous"></script>
+        """,
+        elem_id="adsense-head"
+    )
+
+    gr.HTML(
+        """
+        <div class="topbar" style="display:flex;align-items:center;gap:12px; padding:12px 0;">
+          <img src="/static/logo.png" alt="DevSounds Logo" style="height:40px; width:auto; border-radius:8px;">
+          <h1 style="margin:0; font-size:1.5rem;">Separador de Faixas - DEVSOUNDS</h1>
+        </div>
+        """
+    )
+
     gr.Markdown(
         "Envie um áudio, escolha o modelo e **ouça os stems** abaixo. "
         "Também disponibilizamos um **ZIP** para download.\n\n"
-        "API REST: **POST /api/separate** (multipart/form-data: file, model, use_gpu)."
+        ""
     )
 
     with gr.Row():
@@ -254,6 +293,22 @@ with gr.Blocks(title="Separador de Stems (Demucs)") as demo:
         use_gpu = gr.Checkbox(value=False, label="Usar GPU (CUDA)", info="Marque se tiver NVIDIA + CUDA configurado")
 
     run_btn = gr.Button("Separar")
+
+    gr.HTML(
+        """
+        <div style="margin: 20px 0; text-align:center;">
+        <ins class="adsbygoogle"
+            style="display:block"
+            data-ad-client="ca-pub-5326521012969106"
+            data-ad-slot="1234567890"
+            data-ad-format="auto"
+            data-full-width-responsive="true"></ins>
+        <script>
+            (adsbygoogle = window.adsbygoogle || []).push({});
+        </script>
+        </div>
+        """
+    )
 
     gr.Markdown("### 🎧 Stems")
     with gr.Row():
@@ -271,8 +326,8 @@ with gr.Blocks(title="Separador de Stems (Demucs)") as demo:
         outputs=[out_vocals, out_drums, out_bass, out_other, zip_output]
     )
 
-# Monta o Gradio dentro do FastAPI em /ui
-gr.mount_gradio_app(app, demo, path="/ui")
+# Monta o Gradio dentro do FastAPI na RAIZ
+gr.mount_gradio_app(app, demo, path="/")
 
 # Execução:
 # uvicorn main:app --reload

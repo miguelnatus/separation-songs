@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://stems.devsounds.com.br/sitemap.xml
